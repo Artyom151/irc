@@ -1,0 +1,64 @@
+/**
+ * Core Philosophy: This ruleset implements a public chat room model. All
+ * messages are publicly readable by anyone, including unauthenticated users.
+ * To prevent anonymous spam, only signed-in users (including those
+ * authenticated anonymously) are permitted to create new messages.
+ *
+ * Data Structure: All data is stored in a single top-level collection named
+ * `/messages`.
+ *
+ * Key Security Decisions:
+ * - Public Read Access: All messages in the `/messages` collection can be read
+ *   by any client, authenticated or not. This supports the primary use case
+ *   of a public, open chat application.
+ * - Authenticated Writes: Message creation is restricted to users who have
+ *   signed in (either with credentials or anonymously). This provides a basic
+ *   layer of spam prevention.
+ * - Immutability: Once a message is created, it cannot be updated or deleted
+ *   by anyone. This is a critical security decision made because the `Message`
+ *   entity lacks a direct `authorId` field linked to a user's auth UID,
+ *   making it impossible to verify ownership for modifications. An immutable
+ *   log is the most secure pattern for this data model.
+ *
+ * Denormalization for Authorization: Per the application design, no
+ * denormalization is required. Authorization is based on the user's
+ * authentication status, not on data within the documents.
+ *
+ * Structural Segregation: Not applicable, as all data is public and stored
+ * within a single collection.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * Checks if the user is authenticated (either via a provider or anonymously).
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description
+     *   Manages messages in a public chat room.
+     *   - ANYONE can read messages.
+     *   - SIGNED-IN users can create messages.
+     *   - NO ONE can update or delete messages.
+     * @path /messages/{messageId}
+     * @allow (get) Any user, signed-in or not, reading a message.
+     * @allow (list) Any client listing all messages to display the chat history.
+     * @allow (create) An anonymously signed-in user posting a new message.
+     * @deny (create) An unauthenticated user trying to post a message.
+     * @deny (update) Any user trying to edit a message after it has been posted.
+     * @principle Implements a public, immutable log. Writes are restricted to
+     *            authenticated users to prevent abuse, while reads are open to all.
+     *            Messages cannot be changed to preserve the integrity of the chat history.
+     */
+    match /messages/{messageId} {
+      allow read: if true;
+      allow create: if isSignedIn();
+      allow update: if false;
+      allow delete: if false;
+    }
+  }
+}

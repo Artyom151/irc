@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a message posted to the IRC server.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the message entity."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "Timestamp of when the message was sent.",
+          "format": "date-time"
+        },
+        "content": {
+          "type": "string",
+          "description": "Content of the message."
+        },
+        "author": {
+          "type": "string",
+          "description": "Username or identifier of the message author."
+        }
+      },
+      "required": [
+        "id",
+        "timestamp",
+        "content",
+        "author"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores messages posted to the IRC server. No denormalized authorization fields are required as authorization is implicit.",
+          "params": [
+            {
+              "name": "messageId",
+              "description": "Unique identifier for the message document."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "Given the requirement for storing messages in an IRC server application, a simple collection-based approach is suitable for the MVP.  The design prioritizes simplicity for the MVP, recognizing that more complex structures might be required later for scalability and features like private channels. Since authorization is implicit (any user can post a message), no denormalization is needed. QAPs are supported because `list` operations are inherently secure; no filtering based on data content within rules is performed. The application is designed to be public, and all users are equal in their ability to send messages. This will need to be revisited once private channels are implemented."
+  }
+}
